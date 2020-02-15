@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  DataStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      ShardCount: 1
+
+  KinesisHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ""
+      Handler: KinesisHandler::KinesisHandler.Function::FunctionHandler
+      Runtime: dotnetcore2.1
+      Timeout: 10
+      Tracing: Active
+      Events:
+        Stream:
+          Type: Kinesis
+          Properties:
+            Stream: !GetAtt DataStream.Arn
+            BatchSize: 100
+            StartingPosition: LATEST
+      Policies:
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+
+Outputs:
+  FunctionName:
+    Description: "Function name"
+    Value: !Ref KinesisHandler
+  StreamARN:
+    Description: "Stream ARN"
+    Value: !GetAtt DataStream.Arn

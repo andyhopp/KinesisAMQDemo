@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  DataStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      ShardCount: 1
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+        - arn:aws:iam::aws:policy/AmazonKinesisReadOnlyAccess
+      Path: /
+
+  KinesisHandler:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: KinesisHandler::KinesisHandler.Function::FunctionHandler
+      Code:
+        S3Bucket: us-east-1.andyhoppatamazon.com
+        S3Key: KinesisDemo/KinesisHandler.zip
+      Runtime: dotnetcore2.1
+      Role: !GetAtt LambdaRole.Arn
+      Timeout: 10
+      TracingConfig:
+        Mode: Active
+
+  DataStreamEventSource:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      FunctionName: !Ref KinesisHandler
+      Enabled: true
+      EventSourceArn: !GetAtt DataStream.Arn
+      StartingPosition: TRIM_HORIZON
+      
+Outputs:
+  FunctionName:
+    Description: "Function name"
+    Value: !Ref KinesisHandler
+  StreamARN:
+    Description: "Stream ARN"
+    Value: !GetAtt DataStream.Arn
